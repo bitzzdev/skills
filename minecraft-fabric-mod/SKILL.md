@@ -1,6 +1,6 @@
 ---
 name: minecraft-fabric-mod
-description: Use this skill whenever the user asks the agent to build, scaffold, create, or update a Minecraft Java Edition mod using Fabric (Gradle + Fabric Loom + Fabric API + Yarn mappings). ALWAYS use this skill if the user names a Minecraft version, especially a recent/new one released after the agent's own training data — do not rely on memorized version numbers, mappings, or loader/API versions, since these are frequently wrong for anything released in the last several months. Trigger on phrases like "make a minecraft mod", "fabric mod for 1.X", "build a mod for the new version", "add an item/block/command to my mod", or any request to touch build.gradle, fabric.mod.json, gradle.properties, or src/main/java mod entrypoints in a Fabric project. This skill enforces a mandatory web-research step before writing any Gradle/version config, because guessing versions produces mods that fail to build.
+description: Use whenever the user asks to build, scaffold, create, or update a Minecraft Java Edition mod using Fabric (Gradle, Fabric Loom, Fabric API, Yarn mappings). Always use if the user names a Minecraft version, especially a recent one released after training data cutoff — do not rely on memorized version numbers, mappings, or loader/API versions, since these are frequently wrong for anything released recently. Trigger on phrases like "make a minecraft mod", "fabric mod for 1.X", "build a mod for the new version", "add an item/block/command to my mod", or requests touching build.gradle, fabric.mod.json, gradle.properties, or src/main/java mod entrypoints in a Fabric project. Enforces mandatory web-research before writing Gradle/version config, and requires every project to build exclusively through a GitHub Actions CI workflow rather than local Gradle, since guessing versions or relying on local builds produces mods that fail silently or can't be verified.
 ---
 
 # Minecraft Fabric Mod Builder
@@ -49,10 +49,13 @@ Standard Fabric mod layout:
 
 ```
 mymod/
+├── .github/
+│   └── workflows/
+│       └── build.yml            (CI build — see Step 4, required, not optional)
 ├── build.gradle
 ├── settings.gradle
 ├── gradle.properties
-├── gradlew / gradlew.bat / gradle/wrapper/
+├── gradlew / gradlew.bat / gradle/wrapper/  (still committed — CI needs the wrapper even though we never run it locally)
 ├── src/main/java/com/example/mymod/
 │   └── MyMod.java              (main entrypoint, implements ModInitializer)
 ├── src/client/java/com/example/mymod/  (only if adding client-only code, e.g. rendering)
@@ -69,10 +72,49 @@ Read `references/fabric-mod-json.md` for the `fabric.mod.json` template and requ
 
 Read `references/common-pitfalls.md` before finishing — it covers the mistakes that most often break freshly generated Fabric mods (wrong plugin IDs, obfuscation-related settings for new versions, mixin refmap issues, split client/main sourcesets, etc).
 
-## Step 4 — Verify
+Read `references/github-actions-workflow.md` now as well (not just at Step 4) so the workflow file is scaffolded alongside the rest of the project in one pass, rather than as an afterthought.
 
-After scaffolding or editing, if a Gradle wrapper and network access are available, try running `./gradlew build` (or at least `./gradlew --version` and `./gradlew tasks`) to confirm the project resolves. If gradle/network isn't available in this environment, clearly tell the user which parts are unverified and that they should run the build locally to confirm mappings/loader resolve correctly.
+## Step 4 — Verify via GitHub Actions CI, never locally
+
+**This project never runs `./gradlew build` (or any Gradle command) locally, on the sandbox, or
+on the user's own machine as the verification method.** All builds happen through a GitHub
+Actions workflow. This isn't just a fallback for when local Gradle is unavailable — it's the
+required build path for this skill, always.
+
+Every scaffolded (or newly-versioned) mod project must include a working CI workflow at
+`.github/workflows/build.yml`. Read `references/github-actions-workflow.md` for the annotated
+workflow template — it handles JDK setup (matching the Java version confirmed in Step 1),
+Gradle caching, running the build, and uploading the built mod jar as a workflow artifact.
+
+After scaffolding/editing the project:
+1. Make sure `.github/workflows/build.yml` exists and is current (create it if missing, update it
+   if the Java/Gradle version requirements changed in Step 1/2).
+2. Commit and push the changes so the workflow actually runs:
+
+```bash
+git add .
+git commit -m "Scaffold Fabric mod for <MC_VERSION> with CI build workflow"
+git push
+```
+
+3. Tell the user the push triggers the build automatically, and point them to the repo's Actions
+   tab to watch it and download the built jar from the workflow run's artifacts once it succeeds.
+   If `git push` fails (no remote configured, no repo yet, auth issue), report the exact error —
+   don't claim the mod was verified if it was never actually pushed/built.
+4. If the GitHub CLI (`gh`) is available and authenticated, you can also poll the workflow run's
+   status (`gh run list`, `gh run view <run-id> --log`) after pushing, to catch and fix a failed
+   build automatically rather than leaving it for the user to discover — iterate (fix, commit,
+   push, recheck) until the workflow succeeds or you've exhausted reasonable attempts, then report
+   the final state honestly.
+
+Never tell the user their mod "builds fine" based on local inspection alone, and never attempt to
+install/invoke a local JDK or Gradle installation in the sandbox to self-verify — the CI workflow
+is the single source of truth for whether the project actually compiles.
 
 ## When just adding content to an existing mod
 
-If the user says "add an item/block/command" etc. to an already-scaffolded mod rather than "build a new mod," you usually don't need to redo Step 1 — check the existing `gradle.properties` for the versions already in use and match them, unless the user is also asking to upgrade to a new MC version (in which case do the full research step for the new target version).
+If the user says "add an item/block/command" etc. to an already-scaffolded mod rather than "build a new mod," you usually don't need to redo Step 1 — check the existing `gradle.properties` for the versions already in use and match them, unless the user is also asking to upgrade to a new MC version (in which case do the full research step for the new target version). Confirm `.github/workflows/build.yml` already exists in the project; if it's missing (e.g. an older project scaffolded before this workflow was standard), add it now. Still push changes and let CI verify — don't run Gradle locally for a small addition either.
+
+## Reminder: no local Gradle, ever
+
+Don't run `./gradlew`, install a JDK, or otherwise attempt to build/compile the mod inside this sandbox or on the user's local machine as a substitute for CI. If the user asks "does it build?", the honest answer is "the CI workflow will tell us once it's pushed" — check the Actions run, don't guess from local static inspection alone.
