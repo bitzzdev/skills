@@ -1,6 +1,6 @@
 ---
 name: android-app-dev
-description: Use whenever the user asks to build, scaffold, edit, or debug a native Android app written in Kotlin (or Java), using Jetpack Compose or the legacy View/XML system, Gradle, and Android Studio project conventions. Trigger on phrases like "make an android app", "build an app for android", "add a screen/activity/fragment", "fix my build.gradle", "add a Room database", or any request touching AndroidManifest.xml, build.gradle(.kts), libs.versions.toml, or files under app/src/main/java or app/src/main/kotlin. Always use this skill when the user names a specific recent Android API level, Kotlin version, Compose version, or Android Gradle Plugin (AGP) version, since these change frequently and the agent's memorized defaults may be stale — verify current versions and current recommended patterns (e.g. the Compose compiler now ships as a Kotlin-versioned Gradle plugin, not a separate kotlinCompilerExtensionVersion) via web search before writing version-sensitive Gradle config.
+description: Use whenever the user asks to build, scaffold, edit, or debug a native Android app written in Kotlin or Java, using Jetpack Compose or the legacy View/XML system, Gradle, and Android Studio project conventions. Trigger on phrases like "make an android app", "build an app for android", "add a screen/activity/fragment", "fix my build.gradle", "add a Room database", or requests touching AndroidManifest.xml, build.gradle(.kts), libs.versions.toml, or files under app/src/main/java or app/src/main/kotlin. Always use when the user names a specific recent Android API level, Kotlin version, Compose version, or AGP version, since these change frequently and memorized defaults may be stale — verify current versions and patterns via web search before writing version-sensitive Gradle config. Requires every project to build exclusively through a GitHub Actions CI workflow rather than local Gradle, since local builds in this environment can't be reliably verified.
 ---
 
 # Android App Development
@@ -86,9 +86,13 @@ app/
 │       ├── values/ (strings.xml, themes.xml)
 │       ├── drawable/
 │       └── mipmap-*/ (launcher icons)
+.github/
+└── workflows/
+    └── build.yml          (CI build — see Step 4, required, not optional)
 build.gradle.kts            (project-level)
 settings.gradle.kts
 gradle/libs.versions.toml   (version catalog — current standard convention)
+gradlew / gradlew.bat / gradle/wrapper/  (still committed — CI needs the wrapper even though we never run it locally)
 ```
 
 Use a Gradle **version catalog** (`gradle/libs.versions.toml`) for dependency versions rather
@@ -109,20 +113,68 @@ Read `references/common-pitfalls.md` before finishing — covers mistakes that m
 freshly generated or edited Android projects (missing permissions, Compose recomposition
 pitfalls, Room migration mistakes, ProGuard/R8 issues, wrong Compose compiler config, etc).
 
-## Step 4 — Verify
+Read `references/github-actions-workflow.md` now as well (not just at Step 4) so the CI workflow
+file is scaffolded alongside the rest of the project in one pass, rather than as an afterthought.
 
-If Gradle and network access are available in the environment, try `./gradlew tasks` or
-`./gradlew assembleDebug` to confirm the project resolves and compiles. Since building a full APK
-often needs the Android SDK installed (frequently not available in a sandboxed environment),
-clearly tell the user which parts are unverified and that they should open the project in Android
-Studio (which will prompt to install any missing SDK components) to fully confirm the build.
+## Step 4 — Verify via GitHub Actions CI, never locally
+
+**This project never runs `./gradlew` (build, assembleDebug, tasks, or any other Gradle command)
+locally, in the sandbox, or as a substitute for real verification.** All builds happen through a
+GitHub Actions workflow. This isn't only a fallback for when the Android SDK isn't available
+locally — it's the required build path for this skill, always, even in an environment where
+Gradle happens to be present.
+
+Every scaffolded (or newly-versioned) app project must include a working CI workflow at
+`.github/workflows/build.yml`. Read `references/github-actions-workflow.md` for the annotated
+workflow template — it handles JDK setup, Android SDK/command-line-tools setup, Gradle caching,
+running a debug build (`assembleDebug`, which needs no signing secrets), running lint/unit tests,
+and uploading the built debug APK as a workflow artifact. That same file also covers the
+separate, opt-in release-signing workflow for when the user actually wants a signed release
+build — don't add release signing unless asked, since it requires the user to configure signing
+secrets in their repo.
+
+After scaffolding/editing the project:
+1. Make sure `.github/workflows/build.yml` exists and is current (create it if missing, update it
+   if the Kotlin/AGP/JDK version requirements changed in Step 1/2).
+2. Commit and push the changes so the workflow actually runs:
+
+```bash
+git add .
+git commit -m "Scaffold Android app with CI build workflow"
+git push
+```
+
+3. Tell the user the push triggers the build automatically, and point them to the repo's Actions
+   tab to watch it and download the debug APK from the workflow run's artifacts once it succeeds.
+   If `git push` fails (no remote configured, no repo yet, auth issue), report the exact error —
+   don't claim the app was verified if it was never actually pushed/built.
+4. If the GitHub CLI (`gh`) is available and authenticated, poll the workflow run's status
+   (`gh run list`, `gh run view <run-id> --log`, or `gh run watch <run-id>`) after pushing, to
+   catch and fix a failed build automatically rather than leaving it for the user to discover —
+   iterate (fix, commit, push, recheck) until the workflow succeeds or you've exhausted
+   reasonable attempts, then report the final state honestly.
+
+Never tell the user their app "builds fine" based on local/static inspection alone, and never
+attempt to install or invoke a local JDK, Android SDK, or Gradle installation in the sandbox to
+self-verify — the CI workflow is the single source of truth for whether the project actually
+compiles.
 
 ## When editing an existing app rather than starting fresh
 
 Check the existing project's `libs.versions.toml`/`build.gradle.kts` for versions and conventions
 already in use (Compose vs. Views, Hilt vs. Koin vs. none, existing architecture pattern) and
 match them, rather than imposing different conventions — unless the user is explicitly asking to
-migrate or upgrade something, in which case do the full research step for the new target.
+migrate or upgrade something, in which case do the full research step for the new target. Confirm
+`.github/workflows/build.yml` already exists in the project; if it's missing (e.g. an older
+project scaffolded before this workflow was standard), add it now. Still push changes and let CI
+verify — don't run Gradle locally for a small addition either.
+
+## Reminder: no local Gradle, ever
+
+Don't run `./gradlew`, install the Android SDK, or otherwise attempt to build/compile the app
+inside this sandbox or on the user's local machine as a substitute for CI. If the user asks "does
+it build?", the honest answer is "the CI workflow will tell us once it's pushed" — check the
+Actions run, don't guess from local static inspection alone.
 
 ## Java vs. Kotlin
 
