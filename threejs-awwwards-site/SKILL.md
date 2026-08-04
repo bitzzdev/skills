@@ -22,6 +22,24 @@ process first or alongside this one — a technically perfect scroll rig with ge
 visual design will still look generic. Read `frontend-design`'s SKILL.md for that pass; this
 skill assumes a design direction exists or is being developed in parallel.
 
+## Core rule: when an error or bug appears, prefer documentation over guessing
+
+Whenever a build fails, the console/network shows an error, a library behaves unexpectedly, or a
+bug shows up in code (fresh or existing), **do not fix it from memory or by guessing** what is
+"probably" wrong. Fast-moving libraries like Three.js, GSAP, Lenis, and Vite change APIs,
+deprecate methods, and ship breaking changes faster than training data can stay current — a
+confident-sounding guess is exactly what produces a second, silent failure.
+
+When an error/bug appears:
+1. **Get the exact error text** — the full message, stack trace, or console output, not a
+   paraphrase. Ask the user for the precise error if it is missing or ambiguous.
+2. **Search first** — run a web search or fetch official docs using the exact error string and
+   the library/version involved. Prefer official docs (Three.js docs, GSAP docs, Lenis GitHub,
+   Vite docs) and the library's changelog/release notes.
+3. **Apply a fix only after confirming the cause against documentation.** If you cannot find
+   authoritative docs or confirm the correct behavior, say so and mark the fix as unverified
+   rather than presenting a guess as a solution.
+
 ## Step 1 — Clarify scope before building
 
 Figure out, asking if genuinely ambiguous rather than assuming:

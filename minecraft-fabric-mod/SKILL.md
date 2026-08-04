@@ -11,6 +11,26 @@ The single biggest failure mode for AI-built Fabric mods is **hallucinated versi
 
 **Therefore: before writing or editing any `gradle.properties`, `build.gradle`, or `settings.gradle` for a Fabric project, the agent MUST look up current values instead of recalling them from memory.** This is not optional and applies even if the agent feels confident it knows the numbers.
 
+## Core rule: when an error or bug appears, prefer documentation over guessing
+
+Whenever a Gradle build fails, a compile/runtime error appears, a Minecraft API behaves
+unexpectedly, or a bug shows up in mod code (fresh or existing), **do not fix it from memory or
+by guessing** what is "probably" wrong. Fabric (loader, Loom, Fabric API, Yarn mappings) and
+Minecraft itself change APIs and mappings faster than training data can stay current — a
+confident-sounding guess is exactly what produces a second, silent failure.
+
+When an error/bug appears:
+1. **Get the exact error text** — the full build/compile/stack trace message from the CI log,
+   not a paraphrase. Ask the user for the precise error output if it is missing or ambiguous.
+2. **Search first** — run a web search or fetch official docs using the exact error string and
+   the MC/Fabric version involved. Prefer authoritative sources: `https://docs.fabricmc.net`,
+   `https://meta.fabricmc.net` (the version APIs), `https://github.com/FabricMC/fabric-loom/releases`,
+   `https://github.com/FabricMC/fabric/releases`, the changelogs of the relevant library, and
+   linked issue/discussion threads that quote official docs.
+3. **Apply a fix only after confirming the cause against documentation.** If you cannot find
+   authoritative docs or confirm the correct behavior, say so and mark the fix as unverified
+   rather than presenting a guess as a solution.
+
 ## Step 0 — Figure out the target Minecraft version
 
 - If the user names a specific version (e.g. "1.21.9", "the new version", "the latest release"), that's the target.

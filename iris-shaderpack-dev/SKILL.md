@@ -39,6 +39,27 @@ a Minecraft/Iris version the user names), search first.** Prefer these sources, 
 
 Never reproduce OptiFine's own documentation text even paraphrased-heavily; it's proprietary. Use ShaderDoc as the primary reference instead.
 
+## Core rule: when an error or bug appears, prefer documentation over guessing
+
+Whenever a shader fails to compile, a GLSL compiler error appears, a feature silently doesn't
+apply, or any bug shows up in shader code (fresh or existing), **do not fix it from memory or by
+guessing** what is "probably" wrong. Iris/Minecraft change available uniforms, program names, and
+`shaders.properties` keys across versions faster than training data can stay current — a
+confident-sounding guess is exactly what produces a second, silent failure.
+
+When an error/bug appears:
+1. **Get the exact error text** — the full GLSL compiler error or in-game/log output, not a
+   paraphrase. Ask the user to enable Iris debug mode and paste back the exact error from
+   `latest.log` (see Step 5) if it is missing or ambiguous.
+2. **Search first** — run a web search or fetch official docs using the exact error/feature and
+   the Minecraft/Iris version involved. Prefer authoritative sources:
+   `https://github.com/IrisShaders/ShaderDoc`, `https://github.com/IrisShaders/docs`,
+   `https://github.com/IrisShaders/Iris/releases`, and    `https://github.com/IrisShaders/Iris-Example-Shaderpack` — the primary reference is ShaderDoc,
+   never OptiFine's proprietary docs (see the core principle above).
+3. **Apply a fix only after confirming the cause against documentation.** If you cannot find
+   authoritative docs or confirm the correct behavior, say so and mark the fix as unverified
+   rather than presenting a guess as a solution.
+
 ## Step 1 — Clarify the target and scope
 
 If not already clear, figure out:

@@ -36,6 +36,29 @@ Android tooling changes in ways that break naive pattern-matching from older tra
 `AndroidManifest.xml` for anything version-sensitive, search first rather than relying on
 memorized numbers.** This applies even if the agent feels confident.
 
+## Core rule: when an error or bug appears, prefer documentation over guessing
+
+Whenever the Gradle build fails, a compilation error appears, an API behaves unexpectedly, or a
+bug shows up in code (fresh or existing), **do not fix it from memory or by guessing** what is
+"probably" wrong. Android tooling (AGP, Kotlin, Compose, AndroidX libraries) changes APIs,
+deprecates patterns, and moves versions faster than training data can stay current — a
+confident-sounding guess is exactly what produces a second, silent failure.
+
+When an error/bug appears:
+1. **Get the exact error text** — the full compiler/AGP/stack trace message, not a paraphrase.
+   Ask the user for the precise error output if it is missing or ambiguous (e.g. from the CI log
+   or Android Studio build output).
+2. **Search first** — run a web search or fetch official docs using the exact error string and
+   the library/AGP/Kotlin version involved. Prefer official sources:
+   `https://developer.android.com/develop`, AndroidX release notes at
+   `https://developer.android.com/jetpack/androidx/versions`, the AGP release notes at
+   `https://developer.android.com/build/releases/gradle-plugin`, and Kotlin docs at
+   `https://kotlinlang.org/docs/releases.html`. Also check the library's changelog/release notes
+   and any linked issue/Stack Overflow answers that quote the official docs.
+3. **Apply a fix only after confirming the cause against documentation.** If you cannot find
+   authoritative docs or confirm the correct behavior, say so and mark the fix as unverified
+   rather than presenting a guess as a solution.
+
 ## Step 1 — Research (do this for any new project or version-sensitive change)
 
 Search for, in order of importance:
